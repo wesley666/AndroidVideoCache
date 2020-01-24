@@ -58,14 +58,14 @@ tasks.withType(Test) {
 }
 
 dependencies {
-    compile project(':library')
-    testCompile 'org.slf4j:slf4j-simple:1.7.21'
-    testCompile 'junit:junit:4.12'
-    testCompile 'org.robolectric:robolectric:3.3.2'
-    testCompile 'com.squareup:fest-android:1.0.0'
-    testCompile 'com.google.guava:guava-jdk5:17.0'
-    testCompile('com.danikula:android-garden:2.1.4') {
+    implementation project(':library')
+    testApi 'org.slf4j:slf4j-simple:1.7.21'
+    testApi 'junit:junit:4.12'
+    testApi 'org.robolectric:robolectric:3.3.2'
+    testApi 'com.squareup:fest-android:1.0.0'
+    testApi 'com.google.guava:guava-jdk5:17.0'
+    testApi('com.danikula:android-garden:2.1.4') {
         exclude group: 'com.google.android'
     }
-    testCompile 'org.mockito:mockito-all:1.9.5'
+    testApi 'org.mockito:mockito-all:1.9.5'
 }

@@ -3,7 +3,7 @@ package com.danikula.videocache.sample;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.app.Fragment;
-import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.VideoView;
 
 import com.danikula.videocache.CacheListener;
@@ -27,7 +27,7 @@ public class GalleryVideoFragment extends Fragment implements CacheListener {
     @InstanceState boolean playerStarted;
 
     @ViewById VideoView videoView;
-    @ViewById ProgressBar progressBar;
+    @ViewById SeekBar progressBar;
 
     private boolean visibleForUser;
 
