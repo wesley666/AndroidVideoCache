@@ -6,6 +6,7 @@ package com.danikula.videocache;
  * @author Alexey Danilov (danikula@gmail.com).
  */
 public interface Source {
+    boolean isM3U8();
 
     /**
      * Opens source. Source should be open before using {@link #read(byte[])}

@@ -2,6 +2,7 @@ package com.danikula.videocache;
 
 import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
 
 import com.danikula.videocache.file.DiskUsage;
 import com.danikula.videocache.file.FileNameGenerator;
@@ -65,11 +66,14 @@ public class HttpProxyCacheServer {
     private final Config config;
     private final Pinger pinger;
 
+    public static HttpProxyCacheServerClients m3u8CacheClients = null;
+
     public HttpProxyCacheServer(Context context) {
         this(new Builder(context).buildConfig());
     }
 
     private HttpProxyCacheServer(Config config) {
+
         this.config = checkNotNull(config);
         try {
             InetAddress inetAddress = InetAddress.getByName(PROXY_HOST);
@@ -161,6 +165,9 @@ public class HttpProxyCacheServer {
      */
     public boolean isCached(String url) {
         checkNotNull(url, "Url can't be null!");
+        if (ProxyCacheUtils.isM3U8(url))
+            return false;
+
         return getCacheFile(url).exists();
     }
 
@@ -229,10 +236,27 @@ public class HttpProxyCacheServer {
             GetRequest request = GetRequest.read(socket.getInputStream());
             LOG.debug("Request to cache proxy:" + request);
             String url = ProxyCacheUtils.decode(request.uri);
+
             if (pinger.isPingRequest(url)) {
                 pinger.responseToPing(socket);
             } else {
-                HttpProxyCacheServerClients clients = getClients(url);
+                HttpProxyCacheServerClients clients;
+                if (ProxyCacheUtils.isTS(url) && m3u8CacheClients != null) {
+                    // ts文件，与所属的m3u8文件共用一个clients
+                    clients = m3u8CacheClients;
+                } else {
+                    clients = getClients(url);
+                    if (ProxyCacheUtils.isM3U8(url)) {
+                        // 发现m3u8文件请求时，保存clients，并增加引用计数，以备ts请求共享
+                        m3u8CacheClients = clients;
+                        m3u8CacheClients.incrementAndGet();
+                    } else if (!ProxyCacheUtils.isTS(url)) {
+                        // 非m3u8且非ts请求时，清除相关全局变量
+                        m3u8CacheClients.decrementAndGet();
+                        m3u8CacheClients = null;
+                    }
+                }
+
                 clients.processRequest(request, socket);
             }
         } catch (SocketException e) {
@@ -254,6 +278,7 @@ public class HttpProxyCacheServer {
                 clients = new HttpProxyCacheServerClients(url, config);
                 clientsMap.put(url, clients);
             }
+
             return clients;
         }
     }

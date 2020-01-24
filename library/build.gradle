@@ -37,6 +37,7 @@ idea {
 
 dependencies {
     implementation 'org.slf4j:slf4j-android:1.7.21'
+    implementation 'com.coolerfall:android-http-download-manager:1.6.2'
 }
 
 publish {

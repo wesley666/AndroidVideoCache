@@ -35,6 +35,14 @@ public class ProxyCacheUtils {
         return TextUtils.isEmpty(extension) ? null : mimes.getMimeTypeFromExtension(extension);
     }
 
+    static boolean isM3U8(String url) {
+        return "m3u8".equals(MimeTypeMap.getFileExtensionFromUrl(url));
+    }
+
+    static boolean isTS(String url) {
+        return "ts".equals(MimeTypeMap.getFileExtensionFromUrl(url));
+    }
+
     static void assertBuffer(byte[] buffer, long offset, int length) {
         checkNotNull(buffer, "Buffer must be not null!");
         checkArgument(offset >= 0, "Data offset must be positive!");

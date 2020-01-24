@@ -37,7 +37,7 @@ public class HttpUrlSource implements Source {
 
     private static final int MAX_REDIRECTS = 5;
     private final SourceInfoStorage sourceInfoStorage;
-    private final HeaderInjector headerInjector;
+    public final HeaderInjector headerInjector;
     private SourceInfo sourceInfo;
     private HttpURLConnection connection;
     private InputStream inputStream;
@@ -64,12 +64,23 @@ public class HttpUrlSource implements Source {
         this.headerInjector = source.headerInjector;
     }
 
+    public HttpUrlSource(HttpUrlSource source, SourceInfo sourceInfo) {
+        this.sourceInfo = sourceInfo;
+        this.sourceInfoStorage = source.sourceInfoStorage;
+        this.headerInjector = source.headerInjector;
+    }
+
     @Override
     public synchronized long length() throws ProxyCacheException {
         if (sourceInfo.length == Integer.MIN_VALUE) {
             fetchContentInfo();
         }
         return sourceInfo.length;
+    }
+
+    @Override
+    public boolean isM3U8() {
+        return sourceInfo.m3u8;
     }
 
     @Override
@@ -161,7 +172,7 @@ public class HttpUrlSource implements Source {
             LOG.debug("Open connection " + (offset > 0 ? " with offset " + offset : "") + " to " + url);
             connection = (HttpURLConnection) new URL(url).openConnection();
             injectCustomHeaders(connection, url);
-            if (offset > 0) {
+            if (offset >= 0) {
                 connection.setRequestProperty("Range", "bytes=" + offset + "-");
             }
             if (timeout > 0) {

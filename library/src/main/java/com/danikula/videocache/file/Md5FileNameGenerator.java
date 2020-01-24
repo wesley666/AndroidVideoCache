@@ -23,7 +23,10 @@ public class Md5FileNameGenerator implements FileNameGenerator {
     private String getExtension(String url) {
         int dotIndex = url.lastIndexOf('.');
         int slashIndex = url.lastIndexOf('/');
-        return dotIndex != -1 && dotIndex > slashIndex && dotIndex + 2 + MAX_EXTENSION_LENGTH > url.length() ?
+        int argsIndex = url.indexOf('?');
+        if (argsIndex > 0)
+            url = url.substring(0, argsIndex);
+        return dotIndex != -1 && dotIndex > slashIndex && dotIndex + 2 + 4 > url.length() ?
                 url.substring(dotIndex + 1, url.length()) : "";
     }
 }

@@ -1,6 +1,7 @@
 package com.danikula.videocache;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.danikula.videocache.file.FileCache;
 
@@ -21,9 +22,9 @@ class HttpProxyCache extends ProxyCache {
 
     private static final float NO_CACHE_BARRIER = .2f;
 
-    private final HttpUrlSource source;
-    private final FileCache cache;
-    private CacheListener listener;
+    protected final HttpUrlSource source;
+    protected final FileCache cache;
+    protected CacheListener listener;
 
     public HttpProxyCache(HttpUrlSource source, FileCache cache) {
         super(source, cache);
@@ -48,7 +49,7 @@ class HttpProxyCache extends ProxyCache {
         }
     }
 
-    private boolean isUseCache(GetRequest request) throws ProxyCacheException {
+    protected boolean isUseCache(GetRequest request) throws ProxyCacheException {
         long sourceLength = source.length();
         boolean sourceLengthKnown = sourceLength > 0;
         long cacheAvailable = cache.available();
@@ -56,7 +57,7 @@ class HttpProxyCache extends ProxyCache {
         return !sourceLengthKnown || !request.partial || request.rangeOffset <= cacheAvailable + sourceLength * NO_CACHE_BARRIER;
     }
 
-    private String newResponseHeaders(GetRequest request) throws IOException, ProxyCacheException {
+    protected String newResponseHeaders(GetRequest request) throws IOException, ProxyCacheException {
         String mime = source.getMime();
         boolean mimeKnown = !TextUtils.isEmpty(mime);
         long length = cache.isCompleted() ? cache.available() : source.length();
@@ -73,7 +74,7 @@ class HttpProxyCache extends ProxyCache {
                 .toString();
     }
 
-    private void responseWithCache(OutputStream out, long offset) throws ProxyCacheException, IOException {
+    protected void responseWithCache(OutputStream out, long offset) throws ProxyCacheException, IOException {
         byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
         int readBytes;
         while ((readBytes = read(buffer, offset, buffer.length)) != -1) {
@@ -83,7 +84,7 @@ class HttpProxyCache extends ProxyCache {
         out.flush();
     }
 
-    private void responseWithoutCache(OutputStream out, long offset) throws ProxyCacheException, IOException {
+    protected void responseWithoutCache(OutputStream out, long offset) throws ProxyCacheException, IOException {
         HttpUrlSource newSourceNoCache = new HttpUrlSource(this.source);
         try {
             newSourceNoCache.open((int) offset);
@@ -99,7 +100,7 @@ class HttpProxyCache extends ProxyCache {
         }
     }
 
-    private String format(String pattern, Object... args) {
+    protected String format(String pattern, Object... args) {
         return String.format(Locale.US, pattern, args);
     }
 

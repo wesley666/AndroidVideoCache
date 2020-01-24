@@ -11,4 +11,6 @@ import java.io.File;
 public interface CacheListener {
 
     void onCacheAvailable(File cacheFile, String url, int percentsAvailable);
+
+    boolean onM3U8ItemDecrypt(String tsFilePath);
 }

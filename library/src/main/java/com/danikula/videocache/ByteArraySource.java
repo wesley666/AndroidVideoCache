@@ -27,6 +27,11 @@ public class ByteArraySource implements Source {
     }
 
     @Override
+    public boolean isM3U8() {
+        return false;
+    }
+
+    @Override
     public void open(long offset) throws ProxyCacheException {
         arrayInputStream = new ByteArrayInputStream(data);
         arrayInputStream.skip(offset);
