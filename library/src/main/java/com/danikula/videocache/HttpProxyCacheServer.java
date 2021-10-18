@@ -2,7 +2,6 @@ package com.danikula.videocache;
 
 import android.content.Context;
 import android.net.Uri;
-import android.util.Log;
 
 import com.danikula.videocache.file.DiskUsage;
 import com.danikula.videocache.file.FileNameGenerator;
@@ -56,6 +55,7 @@ public class HttpProxyCacheServer {
 
     private static final Logger LOG = LoggerFactory.getLogger("HttpProxyCacheServer");
     private static final String PROXY_HOST = "127.0.0.1";
+    public static HttpProxyCacheServerClients m3u8CacheClients = null;
 
     private final Object clientsLock = new Object();
     private final ExecutorService socketProcessor = Executors.newFixedThreadPool(8);
@@ -65,15 +65,14 @@ public class HttpProxyCacheServer {
     private final Thread waitConnectionThread;
     private final Config config;
     private final Pinger pinger;
-
-    public static HttpProxyCacheServerClients m3u8CacheClients = null;
+    private final Context context;
 
     public HttpProxyCacheServer(Context context) {
-        this(new Builder(context).buildConfig());
+        this(context, new Builder(context).buildConfig());
     }
 
-    private HttpProxyCacheServer(Config config) {
-
+    private HttpProxyCacheServer(Context context, Config config) {
+        this.context = context;
         this.config = checkNotNull(config);
         try {
             InetAddress inetAddress = InetAddress.getByName(PROXY_HOST);
@@ -236,7 +235,6 @@ public class HttpProxyCacheServer {
             GetRequest request = GetRequest.read(socket.getInputStream());
             LOG.debug("Request to cache proxy:" + request);
             String url = ProxyCacheUtils.decode(request.uri);
-
             if (pinger.isPingRequest(url)) {
                 pinger.responseToPing(socket);
             } else {
@@ -250,13 +248,12 @@ public class HttpProxyCacheServer {
                         // 发现m3u8文件请求时，保存clients，并增加引用计数，以备ts请求共享
                         m3u8CacheClients = clients;
                         m3u8CacheClients.incrementAndGet();
-                    } else if (!ProxyCacheUtils.isTS(url)) {
+                    } else if (!ProxyCacheUtils.isTS(url) && m3u8CacheClients != null) {
                         // 非m3u8且非ts请求时，清除相关全局变量
                         m3u8CacheClients.decrementAndGet();
                         m3u8CacheClients = null;
                     }
                 }
-
                 clients.processRequest(request, socket);
             }
         } catch (SocketException e) {
@@ -275,10 +272,9 @@ public class HttpProxyCacheServer {
         synchronized (clientsLock) {
             HttpProxyCacheServerClients clients = clientsMap.get(url);
             if (clients == null) {
-                clients = new HttpProxyCacheServerClients(url, config);
+                clients = new HttpProxyCacheServerClients(context, url, config);
                 clientsMap.put(url, clients);
             }
-
             return clients;
         }
     }
@@ -378,8 +374,10 @@ public class HttpProxyCacheServer {
         private DiskUsage diskUsage;
         private SourceInfoStorage sourceInfoStorage;
         private HeaderInjector headerInjector;
+        private Context context;
 
         public Builder(Context context) {
+            this.context = context;
             this.sourceInfoStorage = SourceInfoStorageFactory.newSourceInfoStorage(context);
             this.cacheRoot = StorageUtils.getIndividualCacheDirectory(context);
             this.diskUsage = new TotalSizeLruDiskUsage(DEFAULT_MAX_SIZE);
@@ -473,7 +471,7 @@ public class HttpProxyCacheServer {
          */
         public HttpProxyCacheServer build() {
             Config config = buildConfig();
-            return new HttpProxyCacheServer(config);
+            return new HttpProxyCacheServer(context, config);
         }
 
         private Config buildConfig() {

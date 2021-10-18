@@ -19,6 +19,7 @@ public class FileCache implements Cache {
     protected final DiskUsage diskUsage;
     public File file;
     protected RandomAccessFile dataFile;
+    private String dstFileName;
 
     public FileCache(File file) throws ProxyCacheException {
         this(file, new UnlimitedDiskUsage());
@@ -33,7 +34,8 @@ public class FileCache implements Cache {
             File directory = file.getParentFile();
             Files.makeDir(directory);
             boolean completed = file.exists();
-            this.file = completed ? file : new File(file.getParentFile(), file.getName() + TEMP_POSTFIX);
+            this.dstFileName = file.getName();
+            this.file = completed ? file : new File(file.getParentFile(), dstFileName + TEMP_POSTFIX);
             this.dataFile = new RandomAccessFile(this.file, completed ? "r" : "rw");
         } catch (IOException e) {
             throw new ProxyCacheException("Error using file " + file + " as disc cache", e);
@@ -90,14 +92,18 @@ public class FileCache implements Cache {
             return;
         }
 
-        close();
-        String fileName = file.getName().substring(0, file.getName().length() - TEMP_POSTFIX.length());
-        File completedFile = new File(file.getParentFile(), fileName);
+        File completedFile = new File(file.getParentFile(), dstFileName);
         boolean renamed = file.renameTo(completedFile);
         if (!renamed) {
             throw new ProxyCacheException("Error renaming file " + file + " to " + completedFile + " for completion!");
         }
-        file = completedFile;
+
+        reload();
+    }
+
+    public void reload() throws ProxyCacheException {
+        close();
+        file = new File(file.getParentFile(), dstFileName);
         try {
             dataFile = new RandomAccessFile(file, "r");
             diskUsage.touch(file);
@@ -124,4 +130,7 @@ public class FileCache implements Cache {
         return file.getName().endsWith(TEMP_POSTFIX);
     }
 
+    public String getDstFileName() {
+        return dstFileName;
+    }
 }

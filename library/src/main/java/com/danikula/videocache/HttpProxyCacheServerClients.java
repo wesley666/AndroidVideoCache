@@ -1,5 +1,6 @@
 package com.danikula.videocache;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -20,16 +21,18 @@ import static com.danikula.videocache.Preconditions.checkNotNull;
  *
  * @author Alexey Danilov (danikula@gmail.com).
  */
-class HttpProxyCacheServerClients {
+final class HttpProxyCacheServerClients {
 
     private final AtomicInteger clientsCount = new AtomicInteger(0);
     private final String url;
-    public volatile HttpProxyCache proxyCache;
+    private volatile HttpProxyCache proxyCache;
     private final List<CacheListener> listeners = new CopyOnWriteArrayList<>();
     private final CacheListener uiCacheListener;
     private final Config config;
+    private final Context context;
 
-    public HttpProxyCacheServerClients(String url, Config config) {
+    public HttpProxyCacheServerClients(Context context, String url, Config config) {
+        this.context = checkNotNull(context);
         this.url = checkNotNull(url);
         this.config = checkNotNull(config);
         this.uiCacheListener = new UiListenerHandler(url, listeners);
@@ -46,7 +49,7 @@ class HttpProxyCacheServerClients {
     }
 
     private synchronized void startProcessRequest() throws ProxyCacheException {
-        this.proxyCache = proxyCache == null ? newHttpProxyCache() : proxyCache;
+        proxyCache = proxyCache == null ? newHttpProxyCache() : proxyCache;
     }
 
     private synchronized void finishProcessRequest() {
@@ -91,7 +94,7 @@ class HttpProxyCacheServerClients {
         FileCache cache = new FileCache(config.generateCacheFile(url), config.diskUsage);
         HttpProxyCache httpProxyCache;
         if (source.isM3U8()) {
-            httpProxyCache = new M3U8ProxyCache(source, cache);
+            httpProxyCache = new M3U8ProxyCache(context, source, cache);
         } else {
             httpProxyCache = new HttpProxyCache(source, cache);
         }
@@ -123,10 +126,10 @@ class HttpProxyCacheServerClients {
         }
 
         @Override
-        public boolean onM3U8ItemDecrypt(String tsFilePath) {
+        public boolean onM3U8ItemDecrypt(M3U8ProxyCache.CacheItem item) {
             Message message = obtainMessage();
             message.what = MSG_M3U8_ITEM;
-            message.obj = tsFilePath;
+            message.obj = item;
             sendMessage(message);
             return true;
         }
@@ -142,7 +145,7 @@ class HttpProxyCacheServerClients {
 
                 case MSG_M3U8_ITEM:
                     for (CacheListener cacheListener : listeners) {
-                        cacheListener.onM3U8ItemDecrypt((String) msg.obj);
+                        cacheListener.onM3U8ItemDecrypt((M3U8ProxyCache.CacheItem) msg.obj);
                     }
                     break;
             }

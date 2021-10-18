@@ -40,7 +40,7 @@ public class ProxyCacheUtils {
     }
 
     static boolean isTS(String url) {
-        return "ts".equals(MimeTypeMap.getFileExtensionFromUrl(url));
+        return "ts".equals(MimeTypeMap.getFileExtensionFromUrl(url)) || url.endsWith(".key")||url.contains(".mp4");
     }
 
     static void assertBuffer(byte[] buffer, long offset, int length) {

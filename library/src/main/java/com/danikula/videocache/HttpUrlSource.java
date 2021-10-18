@@ -172,7 +172,7 @@ public class HttpUrlSource implements Source {
             LOG.debug("Open connection " + (offset > 0 ? " with offset " + offset : "") + " to " + url);
             connection = (HttpURLConnection) new URL(url).openConnection();
             injectCustomHeaders(connection, url);
-            if (offset >= 0) {
+            if (offset > 0) {
                 connection.setRequestProperty("Range", "bytes=" + offset + "-");
             }
             if (timeout > 0) {
@@ -209,6 +209,10 @@ public class HttpUrlSource implements Source {
 
     public String getUrl() {
         return sourceInfo.url;
+    }
+
+    public String getKey() {
+        return sourceInfo.key;
     }
 
     @Override
