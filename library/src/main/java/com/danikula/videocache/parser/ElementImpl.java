@@ -94,11 +94,13 @@ final class ElementImpl implements Element {
         private final int programId;
         private final int bandWidth;
         private final String codec;
+        private final String resolution;
 
-        public PlaylistInfoImpl(int programId, int bandWidth, String codec) {
+        public PlaylistInfoImpl(int programId, int bandWidth, String codec, String resolution) {
             this.programId = programId;
             this.bandWidth = bandWidth;
             this.codec = codec;
+            this.resolution = resolution;
         }
 
         public int getProgramId() {
@@ -113,12 +115,17 @@ final class ElementImpl implements Element {
             return codec;
         }
 
+        public String getResolution() {
+            return resolution;
+        }
+
         @Override
         public String toString() {
             return "PlaylistInfoImpl{" +
                     "programId=" + programId +
                     ", bandWidth=" + bandWidth +
                     ", codec='" + codec + '\'' +
+                    ", resolution='" + resolution + '\'' +
                     '}';
         }
     }

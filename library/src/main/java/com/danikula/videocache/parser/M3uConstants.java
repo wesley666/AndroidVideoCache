@@ -115,6 +115,33 @@ final class M3uConstants {
     final static String EXT_X_STREAM_INF = "#EXT-X-STREAM-INF";
 
     /**
+     *  EXT-X-STREAM-INF
+     * PROGRAM-ID=<i>
+     */
+    final static String PROGRAM_ID = "PROGRAM-ID";
+
+    /**
+     *  EXT-X-STREAM-INF
+     *
+     *  BANDWIDTH=<n>
+     */
+    final static String BANDWIDTH = "BANDWIDTH";
+
+    /**
+     *  EXT-X-STREAM-INF
+     *
+     *  RESOLUTION=<N*M>
+     */
+    final static String RESOLUTION = "RESOLUTION";
+
+    /**
+     *  EXT-X-STREAM-INF
+     *
+     *  CODECS="[format][,format]*"
+     */
+    final static String CODECS = "CODECS";
+
+    /**
      * The EXT-X-ENDLIST tag indicates that no more media files will be
      * added to the Playlist file.
      */
@@ -149,7 +176,7 @@ final class M3uConstants {
             throw new AssertionError();
         }
 
-        final static Pattern EXTINF = Pattern.compile(tagPattern(M3uConstants.EXTINF) + "\\s*(-1|[0-9\\.]*)\\s*(?:,((.*)))?");
+        final static Pattern EXTINF = Pattern.compile(tagPattern(M3uConstants.EXTINF) + "\\s*(-1|[0-9\\.]*)\\s*(?:,(.*))?");
 
         private static String tagPattern(String tagName) {
             return "\\s*" + tagName + "\\s*:\\s*";
@@ -157,7 +184,7 @@ final class M3uConstants {
 
         // #EXT-X-KEY:METHOD=&lt;method&gt;[,URI="&lt;URI&gt;"
         // #EXT-X-KEY:METHOD=AES-128,URI="https://priv.example.com/key.php?r=52"
-        final static Pattern EXT_X_KEY = Pattern.compile(tagPattern(M3uConstants.EXT_X_KEY) + "METHOD=([0-9A-Za-z\\-]*)(,URI=\"(([^\\\\\"]*.*))\")?");
+        final static Pattern EXT_X_KEY = Pattern.compile(tagPattern(M3uConstants.EXT_X_KEY) + "METHOD=([0-9A-Za-z\\-]*)(,URI=\"([^\\\\\"]*.*)\")?");
 
         final static Pattern EXT_X_TARGET_DURATION = Pattern.compile(tagPattern(M3uConstants.EXT_X_TARGET_DURATION) + "([0-9]*)");
         final static Pattern EXT_X_MEDIA_SEQUENCE = Pattern.compile(tagPattern(M3uConstants.EXT_X_MEDIA_SEQUENCE) + "([0-9]*)");
