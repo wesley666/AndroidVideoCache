@@ -16,8 +16,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp"
-        app:fillColor="#800F"
-        app:radius="10dp"
-        app:strokeColor="#800F" />
+        android:fillColor="#800F"
+        android:radius="10dp"
+        android:strokeColor="#800F" />
 
 </LinearLayout>

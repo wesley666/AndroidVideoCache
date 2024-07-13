@@ -10,6 +10,7 @@ import android.widget.VideoView;
 
 import com.danikula.videocache.CacheListener;
 import com.danikula.videocache.HttpProxyCacheServer;
+import com.danikula.videocache.M3U8ProxyCache;
 
 import org.androidannotations.annotations.AfterViews;
 import org.androidannotations.annotations.EFragment;
@@ -88,6 +89,11 @@ public class VideoFragment extends Fragment implements CacheListener {
         progressBar.setSecondaryProgress(percentsAvailable);
         setCachedState(percentsAvailable == 100);
         Log.d(LOG_TAG, String.format("onCacheAvailable. percents: %d, file: %s, url: %s", percentsAvailable, file, url));
+    }
+
+    @Override
+    public boolean onM3U8ItemDecrypt(M3U8ProxyCache.CacheItem info) {
+        return false;
     }
 
     private void updateVideoProgress() {
