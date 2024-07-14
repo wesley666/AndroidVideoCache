@@ -10,6 +10,7 @@ import com.coolerfall.download.DownloadRequest;
 import com.coolerfall.download.OkHttpDownloader;
 import com.danikula.videocache.file.FileCache;
 import com.danikula.videocache.parser.Element;
+import com.danikula.videocache.parser.M3uConstants;
 import com.danikula.videocache.parser.Playlist;
 
 import java.io.BufferedOutputStream;
@@ -28,18 +29,28 @@ import java.util.concurrent.TimeUnit;
 
 import static com.danikula.videocache.ProxyCacheUtils.DEFAULT_BUFFER_SIZE;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class M3U8ProxyCache extends HttpProxyCache {
+    private static final Logger LOG = LoggerFactory.getLogger("M3U8ProxyCache");
+
+    //原始文件
+    private static final String LOCAL_M3U8_SUFFIX = "_local.m3u8";
+    //修改后
+    private static final String PROXY_M3U8_SUFFIX = "_proxy.m3u8";
+
     private static final int M3U8_CACHE_STEP = 5;
     private File m3u8CacheDir;
-    private DownloadManager m3u8Downloader;
+    private final DownloadManager m3u8Downloader;
     private String baseUrl;
     private String baseCachePath;
     private List<Element> elements;
-    private Map<String, M3U8Item> m3U8ItemMap = new HashMap<>();
+    private final Map<String, M3U8Item> m3U8ItemMap = new HashMap<>();
     private int mCurRequestPos = 0; // 客户端正在请求的ts索引
     private int mCurCachePos = 0;   // 代理端正在缓存的，离mCurRequestPose最远的ts索引
     private int mCacheShift = 2;    // 缓存位置与播放位置偏移，对需要ts需要解码的情况，就不能有偏移了，必须全部走缓存流程
-    private DecryptInfo mDecryptInfo;
+    private final DecryptInfo mDecryptInfo;
     private volatile boolean mTransformed = false;
 
 
@@ -90,7 +101,7 @@ public class M3U8ProxyCache extends HttpProxyCache {
         mDecryptInfo = new DecryptInfo(source.getKey(), 512);
     }
 
-    private DownloadCallback callback = new DownloadCallback() {
+    private final DownloadCallback callback = new DownloadCallback() {
         @Override
         public void onProgress(int downloadId, long bytesWritten, long totalBytes) {
             int percents = 100 * mCurCachePos / elements.size();
@@ -110,12 +121,12 @@ public class M3U8ProxyCache extends HttpProxyCache {
         }
     };
 
-    private String getRelativeName(String url) {
+    private String getTsRelativeName(int index, String url) {
         int p = url.lastIndexOf('/');
         if (p > 0)
-            return url.substring(p + 1);
+            return index + "_" + url.substring(p + 1);
         else
-            return url;
+            return index + "_" + url;
     }
 
     private String getRelativeKey(String line) {
@@ -138,10 +149,10 @@ public class M3U8ProxyCache extends HttpProxyCache {
             String url;
             if (name.startsWith("http")) {
                 url = name;
-                name = getRelativeName(name);
             } else {
                 url = baseUrl + name;
             }
+            name = getTsRelativeName(pos,  name);
 
             File file = new File(baseCachePath + File.separator + name);
             if (!file.exists()) {
@@ -171,9 +182,12 @@ public class M3U8ProxyCache extends HttpProxyCache {
 
             String line;
             //分行读取
+            int index = 0;
             while (( line = buffreader.readLine()) != null) {
-                if (line.startsWith("http")) {
-                    line = getRelativeName(line);
+                if (!line.startsWith(M3uConstants.COMMENT_PREFIX) && !line.startsWith(M3uConstants.EX_PREFIX)) {
+                    //ts文件
+                    line = getTsRelativeName(index, line);
+                    index++;
                 }
 
                 line = line + "\n";
@@ -182,58 +196,73 @@ public class M3U8ProxyCache extends HttpProxyCache {
             }
 
             fos.flush();
+            raw.renameTo(new File(raw.getParentFile(), raw.getName() + LOCAL_M3U8_SUFFIX));
             ft.renameTo(raw);
 
             cache.reload();
-
-            File fo = new File(raw.getAbsolutePath() + ".o");
-            fo.createNewFile();
 
             buffreader.close();
             fos.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        mTransformed = true;
     }
 
     @Override
     protected void onCachePercentsAvailableChanged(int percents) {
-
         if (cache.isCompleted()) {
-            try {
-                // 此处的cache代表的是m3u8的清单文件，清单文件下载完成后，将所有ts信息解析出来
-                FileInputStream fis = new FileInputStream(cache.file);
-                elements = Playlist.parse(fis).getElements();
-
-                String name;
-                for (Element element : elements) {
-                    // 使用相对名称作为key
-                    name = getRelativeName(element.getURI().getPath());
-                    m3U8ItemMap.put(name, new M3U8Item(element));
-                }
-
-                // 处理清单文件，将其中ts全部改为相对路径
-                tryTransformList(cache.file);
-
-                if (TextUtils.isEmpty(mDecryptInfo.key))
-                    mCacheShift = 2;
-                else
-                    mCacheShift = 0;
-
-                // 创建ts文件下载文件夹
-                baseCachePath = cache.file.getAbsolutePath() + "s";
-                m3u8CacheDir = new File(baseCachePath);
-                m3u8CacheDir.mkdirs();
-
-                // 调度下载第一批文件
-                scheduleCache();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            parseM3U8();
         }
     }
+
+    private void parseM3U8() {
+        try {
+            if (mTransformed) {
+                return;
+            }
+            // 此处的cache代表的是m3u8的清单文件，清单文件下载完成后，将所有ts信息解析出来
+            boolean hasLocalFile = false;
+            File raw = new File(cache.file.getParentFile(), cache.file.getName() + LOCAL_M3U8_SUFFIX);
+            if (raw.exists() && raw.length() > 0) {
+                hasLocalFile = true;
+            } else {
+                raw = cache.file;
+            }
+            FileInputStream fis = new FileInputStream(raw);
+            elements = Playlist.parse(fis).getElements();
+
+            String name;
+            int index = 0;
+            for (Element element : elements) {
+                // 使用相对名称作为key
+                name = getTsRelativeName(index, element.getURI().getPath());
+                m3U8ItemMap.put(name, new M3U8Item(element));
+                index++;
+            }
+
+            if (!hasLocalFile) {
+                // 处理清单文件，将其中ts全部改为相对路径
+                tryTransformList(cache.file);
+            }
+            mTransformed = true;
+
+            if (TextUtils.isEmpty(mDecryptInfo.key))
+                mCacheShift = 2;
+            else
+                mCacheShift = 0;
+
+            // 创建ts文件下载文件夹
+            baseCachePath = cache.file.getAbsolutePath() + "s";
+            m3u8CacheDir = new File(baseCachePath);
+            m3u8CacheDir.mkdirs();
+
+            // 调度下载第一批文件
+            scheduleCache();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @Override
     protected boolean isUseCache(GetRequest request) throws ProxyCacheException {
@@ -360,25 +389,27 @@ public class M3U8ProxyCache extends HttpProxyCache {
         String uri = ProxyCacheUtils.decode(request.uri);
         if (ProxyCacheUtils.isM3U8(uri)) {
             // 等待清单文件预处理（去除其中绝对路径）完成
+            if (cache.isCompleted()) {
+                parseM3U8();
+            } else {
+                byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
+                int readBytes, offset = 0;
+                while ((readBytes = read(buffer, offset, buffer.length)) != -1) {
+                    offset += readBytes;
+                }
 
-            byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
-            int readBytes, offset=0;
-            while ((readBytes = read(buffer, offset, buffer.length)) != -1) {
-                offset += readBytes;
-            }
+                int tick = 60;
+                while (tick-- > 0) {
+                    if (mTransformed)
+                        break;
 
-            int tick = 60;
-            while (tick-- > 0) {
-                if (mTransformed)
-                    break;
-
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
-
             // 清单文件的请求，让父类处理
             super.processRequest(request, socket);
         } else {

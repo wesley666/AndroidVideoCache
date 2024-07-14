@@ -9,20 +9,20 @@ import java.util.regex.Pattern;
  * @author dkuffner
  */
 
-final class M3uConstants {
+public final class M3uConstants {
     private M3uConstants() {
         throw new AssertionError("Not allowed");
     }
 
-    final static String COMMENT_PREFIX = "#";
+    public final static String COMMENT_PREFIX = "#";
 
-    final static String EX_PREFIX = "#EXT";
+    public final static String EX_PREFIX = "#EXT";
 
 
     /**
      * An Extended M3U file is distinguished from a basic M3U file by its first line, which MUST be #EXTM3U.
      */
-    final static String EXTM3U = "#EXTM3U";
+    public final static String EXTM3U = "#EXTM3U";
 
     /**
      * EXTINF is a record marker that describes the media file identified by the URI that follows it.
